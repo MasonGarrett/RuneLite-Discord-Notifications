@@ -1,12 +1,12 @@
-package com.discordnotifications;
+package com.discordnotifier;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("discordnotifications")
-public interface DiscordNotificationsConfig extends Config {
+@ConfigGroup("discordnotifier")
+public interface DiscordNotifierConfig extends Config {
 
     // Levelling config section
     @ConfigSection(

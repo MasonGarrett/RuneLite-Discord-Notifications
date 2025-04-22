@@ -1,4 +1,4 @@
-package com.discordnotifications;
+package com.discordnotifier;
 
 
 import lombok.Data;

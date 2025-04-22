@@ -1,4 +1,4 @@
-package com.discordnotifications;
+package com.discordnotifier;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -33,8 +33,8 @@ import static net.runelite.api.widgets.WidgetID.QUEST_COMPLETED_GROUP_ID;
 import static net.runelite.http.api.RuneLiteAPI.GSON;
 
 @Slf4j
-@PluginDescriptor(name = "Discord Notifications")
-public class DiscordNotificationsPlugin extends Plugin {
+@PluginDescriptor(name = "Discord Notifier")
+public class DiscordNotifierPlugin extends Plugin {
     private Hashtable<String, Integer> currentLevels;
     private ArrayList<String> leveledSkills;
     private boolean shouldSendLevelMessage = false;
@@ -70,7 +70,7 @@ public class DiscordNotificationsPlugin extends Plugin {
     private Client client;
 
     @Inject
-    private DiscordNotificationsConfig config;
+    private DiscordNotifierConfig config;
 
     @Inject
     private OkHttpClient okHttpClient;
@@ -79,8 +79,8 @@ public class DiscordNotificationsPlugin extends Plugin {
     private DrawManager drawManager;
 
     @Provides
-    DiscordNotificationsConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(DiscordNotificationsConfig.class);
+    DiscordNotifierConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(DiscordNotifierConfig.class);
     }
 
     @Override

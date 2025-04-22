@@ -22,7 +22,7 @@ dependencies {
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
 }
 
-group = 'com.discordnotifications'
+group = 'com.discordnotifier'
 version = '1.7.0'
 sourceCompatibility = '1.8'
 
