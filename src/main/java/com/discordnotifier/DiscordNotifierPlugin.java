@@ -21,10 +21,7 @@ import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -81,6 +78,18 @@ public class DiscordNotifierPlugin extends Plugin {
     @Provides
     DiscordNotifierConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(DiscordNotifierConfig.class);
+    }
+
+    private static Map<String, String> caTierMap;
+
+    static {
+        caTierMap = new HashMap<>();
+        caTierMap.put("1", "an easy");
+        caTierMap.put("2", "a medium");
+        caTierMap.put("3", "a hard");
+        caTierMap.put("4", "an elite");
+        caTierMap.put("5", "a master");
+        caTierMap.put("6", "a grandmaster");
     }
 
     @Override
@@ -235,7 +244,9 @@ public class DiscordNotifierPlugin extends Plugin {
                         && client.getVarbitValue(Varbits.COMBAT_ACHIEVEMENTS_POPUP) == 0) {
                     String[] s = bottomText.split("<.*?>");
                     String task = s[1].replaceAll("[:?]", "");
-                    sendCombatAchievementMessage(task);
+                    String tier = caTierMap.get(s[2].stripLeading().split("")[1]);
+
+                    sendCombatAchievementMessage(task, tier);
                 }
 
                 notificationStarted = false;
@@ -271,12 +282,13 @@ public class DiscordNotifierPlugin extends Plugin {
         sendWebhook(discordWebhookBody, config.sendQuestingScreenshot(), config.questingWebhook());
     }
 
-    private void sendCombatAchievementMessage(String task) {
+    private void sendCombatAchievementMessage(String task, String tier) {
         String localName = client.getLocalPlayer().getName();
 
         String combatAchievementMessageString =
                 config.combatAchievementsMessage()
                         .replaceAll("\\$name", localName)
+                        .replaceAll("\\$tier", tier)
                         .replaceAll("\\$achievement", task);
 
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
