@@ -6,7 +6,6 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
-import net.runelite.api.widgets.WidgetID;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -36,32 +35,23 @@ public class DiscordNotifierPlugin extends Plugin {
     private ArrayList<String> leveledSkills;
     private boolean shouldSendLevelMessage = false;
     private boolean shouldSendQuestMessage = false;
-    private boolean shouldSendClueMessage = false;
     private boolean notificationStarted = false;
     private int ticksWaited = 0;
+
+    private String collectedTier = "";
+    private String collectedValue = "";
 
     private static final Pattern QUEST_PATTERN_1 = Pattern.compile(".+?ve\\.*? (?<verb>been|rebuilt|.+?ed)? ?(?:the )?'?(?<quest>.+?)'?(?: quest)?[!.]?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern QUEST_PATTERN_2 = Pattern.compile("'?(?<quest>.+?)'?(?: quest)? (?<verb>[a-z]\\w+?ed)?(?: f.*?)?[!.]?$", Pattern.CASE_INSENSITIVE);
     private static final ImmutableList<String> RFD_TAGS = ImmutableList.of("Another Cook", "freed", "defeated", "saved");
-    private static final ImmutableList<String> WORD_QUEST_IN_NAME_TAGS =
-            ImmutableList.of(
-                    "Another Cook",
-                    "Doric",
-                    "Heroes",
-                    "Legends",
-                    "Observatory",
-                    "Olaf",
-                    "Waterfall"
-            );
+    private static final ImmutableList<String> WORD_QUEST_IN_NAME_TAGS = ImmutableList.of("Another Cook", "Doric", "Heroes", "Legends", "Observatory", "Olaf", "Waterfall");
     private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log:.*", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMBAT_TASK_REGEX = Pattern.compile("Congratulations, you've completed an? (?:\\w+) combat task:.*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern WELL_DONE_REGEX = Pattern.compile("Well done, you've completed the Treasure Trail!", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLUE_SCROLL_REGEX = Pattern.compile("You have completed (\\d+) (Beginner|Easy|Medium|Hard|Elite|Master) Treasure Trails\\.", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TREASURE_VALUE_REGEX = Pattern.compile("Your treasure is worth around (.*?) coins!", Pattern.CASE_INSENSITIVE);
 
-    private static final ImmutableList<String> PET_MESSAGES =
-            ImmutableList.of(
-                    "You have a funny feeling like you're being followed",
-                    "You feel something weird sneaking into your backpack",
-                    "You have a funny feeling like you would have been followed"
-            );
+    private static final ImmutableList<String> PET_MESSAGES = ImmutableList.of("You have a funny feeling like you're being followed", "You feel something weird sneaking into your backpack", "You have a funny feeling like you would have been followed");
 
     @Inject
     private Client client;
@@ -116,17 +106,8 @@ public class DiscordNotifierPlugin extends Plugin {
 
     @Subscribe
     public void onGameTick(GameTick event) {
-        boolean didCompleteClue = client.getWidget(WidgetInfo.CLUE_SCROLL_REWARD_ITEM_CONTAINER) != null;
 
-        if (shouldSendClueMessage && didCompleteClue && config.includeClues()) {
-            shouldSendClueMessage = false;
-            sendClueMessage();
-        }
-
-        if (shouldSendQuestMessage
-                && config.includeQuestComplete()
-                && client.getWidget(WidgetInfo.QUEST_COMPLETED_NAME_TEXT) != null
-        ) {
+        if (shouldSendQuestMessage && config.includeQuestComplete() && client.getWidget(WidgetInfo.QUEST_COMPLETED_NAME_TEXT) != null) {
             shouldSendQuestMessage = false;
             String text = client.getWidget(WidgetInfo.QUEST_COMPLETED_NAME_TEXT).getText();
             String questName = parseQuestCompletedWidget(text);
@@ -149,7 +130,7 @@ public class DiscordNotifierPlugin extends Plugin {
 
     @Subscribe
     public void onStatChanged(net.runelite.api.events.StatChanged statChanged) {
-        if (!config.includeLevelling()) {
+        if (!config.includeLeveling()) {
             return;
         }
 
@@ -184,6 +165,24 @@ public class DiscordNotifierPlugin extends Plugin {
         }
 
         String chatMessage = event.getMessage();
+        chatMessage = Text.removeFormattingTags(chatMessage);
+
+        Matcher valueMatcher = TREASURE_VALUE_REGEX.matcher(chatMessage);
+        if (valueMatcher.find() && config.includeClues()) {
+            collectedValue = valueMatcher.group(1);
+            sendClueMessage(collectedTier, collectedValue);
+        }
+
+        Matcher clueMatcher = CLUE_SCROLL_REGEX.matcher(chatMessage);
+        if (clueMatcher.find()) {
+            String tier = clueMatcher.group(2);
+            if (tier.equals("easy") || tier.equals("elite")) {
+                collectedTier = "an " + tier;
+            } else {
+                collectedTier = "a " + tier;
+            }
+        }
+
         if (config.includePets() && PET_MESSAGES.stream().anyMatch(chatMessage::contains)) {
             sendPetMessage();
         }
@@ -211,10 +210,6 @@ public class DiscordNotifierPlugin extends Plugin {
         if (groupId == QUEST_COMPLETED_GROUP_ID) {
             shouldSendQuestMessage = true;
         }
-
-        if (groupId == WidgetID.CLUE_SCROLL_REWARD_GROUP_ID) {
-            shouldSendClueMessage = true;
-        }
     }
 
     @Subscribe
@@ -231,17 +226,12 @@ public class DiscordNotifierPlugin extends Plugin {
                 String topText = client.getVarcStrValue(VarClientStr.NOTIFICATION_TOP_TEXT);
                 String bottomText = client.getVarcStrValue(VarClientStr.NOTIFICATION_BOTTOM_TEXT);
 
-                if (topText.equalsIgnoreCase("Collection log")
-                        && config.includeCollectionLogs()
-                        && config.sendCollectionLogScreenshot()) {
+                if (topText.equalsIgnoreCase("Collection log") && config.includeCollectionLogs() && config.sendCollectionLogScreenshot()) {
                     String entry = Text.removeTags(bottomText).substring("New item:".length());
                     sendCollectionLogMessage(entry);
                 }
 
-                if (topText.equalsIgnoreCase("Combat Task Completed!")
-                        && config.includeCombatAchievements()
-                        && config.sendCombatAchievementsScreenshot()
-                        && client.getVarbitValue(Varbits.COMBAT_ACHIEVEMENTS_POPUP) == 0) {
+                if (topText.equalsIgnoreCase("Combat Task Completed!") && config.includeCombatAchievements() && config.sendCombatAchievementsScreenshot() && client.getVarbitValue(Varbits.COMBAT_ACHIEVEMENTS_POPUP) == 0) {
                     String[] s = bottomText.split("<.*?>");
                     String task = s[1].replaceAll("[:?]", "");
                     String tier = caTierMap.get(s[2].stripLeading().split("")[1]);
@@ -255,8 +245,7 @@ public class DiscordNotifierPlugin extends Plugin {
     }
 
     private boolean shouldSendForThisLevel(int level) {
-        return level >= config.minLevel()
-                && levelMeetsIntervalRequirement(level);
+        return level >= config.minLevel() && levelMeetsIntervalRequirement(level);
     }
 
     private boolean levelMeetsIntervalRequirement(int level) {
@@ -266,16 +255,13 @@ public class DiscordNotifierPlugin extends Plugin {
             levelInterval = (int) Math.max(Math.ceil(-.1 * level + config.linearLevelMax()), 1);
         }
 
-        return levelInterval <= 1
-                || level == 99
-                || level % levelInterval == 0;
+        return levelInterval <= 1 || level == 99 || level % levelInterval == 0;
     }
 
     private void sendQuestMessage(String questName) {
         String localName = client.getLocalPlayer().getName();
 
-        String questMessageString = config.questMessage().replaceAll("\\$name", localName)
-                .replaceAll("\\$quest", questName);
+        String questMessageString = config.questMessage().replaceAll("\\$name", localName).replaceAll("\\$quest", questName);
 
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
         discordWebhookBody.setContent(questMessageString);
@@ -285,11 +271,7 @@ public class DiscordNotifierPlugin extends Plugin {
     private void sendCombatAchievementMessage(String task, String tier) {
         String localName = client.getLocalPlayer().getName();
 
-        String combatAchievementMessageString =
-                config.combatAchievementsMessage()
-                        .replaceAll("\\$name", localName)
-                        .replaceAll("\\$tier", tier)
-                        .replaceAll("\\$achievement", task);
+        String combatAchievementMessageString = config.combatAchievementsMessage().replaceAll("\\$name", localName).replaceAll("\\$tier", tier).replaceAll("\\$achievement", task);
 
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
         discordWebhookBody.setContent(combatAchievementMessageString);
@@ -299,10 +281,7 @@ public class DiscordNotifierPlugin extends Plugin {
     private void sendCollectionLogMessage(String entry) {
         String localName = client.getLocalPlayer().getName();
 
-        String collectionLogMessageString =
-                config.collectionLogMessage()
-                        .replaceAll("\\$name", localName)
-                        .replaceAll("\\$entry", entry);
+        String collectionLogMessageString = config.collectionLogMessage().replaceAll("\\$name", localName).replaceAll("\\$entry", entry);
 
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
         discordWebhookBody.setContent(collectionLogMessageString);
@@ -319,10 +298,10 @@ public class DiscordNotifierPlugin extends Plugin {
         sendWebhook(discordWebhookBody, config.sendDeathScreenshot(), config.deathWebhook());
     }
 
-    private void sendClueMessage() {
+    private void sendClueMessage(String tier, String value) {
         String localName = client.getLocalPlayer().getName();
 
-        String clueMessage = config.clueMessage().replaceAll("\\$name", localName);
+        String clueMessage = config.clueMessage().replaceAll("\\$name", localName).replaceAll("\\$tier", tier).replaceAll("\\$value", value);
 
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
         discordWebhookBody.setContent(clueMessage);
@@ -347,17 +326,14 @@ public class DiscordNotifierPlugin extends Plugin {
                 levelUpString += config.totalLevelMessage();
             }
 
-            String fixed = levelUpString
-                    .replaceAll("\\$skill", skills[i])
-                    .replaceAll("\\$level", currentLevels.get(skills[i]).toString())
-                    .replaceAll("\\$total", Integer.toString(client.getTotalLevel()));
+            String fixed = levelUpString.replaceAll("\\$skill", skills[i]).replaceAll("\\$level", currentLevels.get(skills[i]).toString()).replaceAll("\\$total", Integer.toString(client.getTotalLevel()));
 
             levelUpString = fixed;
         }
 
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
         discordWebhookBody.setContent(levelUpString);
-        sendWebhook(discordWebhookBody, config.sendLevellingScreenshot(), config.levellingWebhook());
+        sendWebhook(discordWebhookBody, config.sendLevelingScreenshot(), config.levelingWebhook());
     }
 
     private void sendPetMessage() {
@@ -375,20 +351,11 @@ public class DiscordNotifierPlugin extends Plugin {
             return;
         }
 
-        List<String> webhookUrls =
-                Arrays.asList(configUrl.split("\n"))
-                        .stream()
-                        .filter(u -> u.length() > 0)
-                        .map(u -> u.trim())
-                        .collect(Collectors.toList());
+        List<String> webhookUrls = Arrays.asList(configUrl.split("\n")).stream().filter(u -> u.length() > 0).map(u -> u.trim()).collect(Collectors.toList());
 
         for (String webhookUrl : webhookUrls) {
             HttpUrl url = HttpUrl.parse(webhookUrl);
-            MultipartBody.Builder requestBodyBuilder =
-                    new MultipartBody
-                            .Builder()
-                            .setType(MultipartBody.FORM)
-                            .addFormDataPart("payload_json", GSON.toJson(discordWebhookBody));
+            MultipartBody.Builder requestBodyBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("payload_json", GSON.toJson(discordWebhookBody));
 
             if (sendScreenshot) {
                 sendWebhookWithScreenshot(url, requestBodyBuilder);
@@ -399,57 +366,42 @@ public class DiscordNotifierPlugin extends Plugin {
     }
 
     private void sendWebhookWithScreenshot(HttpUrl url, MultipartBody.Builder requestBodyBuilder) {
-        drawManager.requestNextFrameListener(
-                image ->
-                {
-                    BufferedImage bufferedImage = (BufferedImage) image;
-                    byte[] imageBytes;
-                    try {
-                        imageBytes = convertImageToByteArray(bufferedImage);
-                    } catch (IOException e) {
-                        log.warn("Error converting image to byte array", e);
-                        return;
-                    }
+        drawManager.requestNextFrameListener(image -> {
+            BufferedImage bufferedImage = (BufferedImage) image;
+            byte[] imageBytes;
+            try {
+                imageBytes = convertImageToByteArray(bufferedImage);
+            } catch (IOException e) {
+                log.warn("Error converting image to byte array", e);
+                return;
+            }
 
-                    requestBodyBuilder.addFormDataPart(
-                            "file",
-                            "image.png",
-                            RequestBody.create(
-                                    MediaType.parse("image/png"),
-                                    imageBytes
-                            )
-                    );
+            requestBodyBuilder.addFormDataPart("file", "image.png", RequestBody.create(MediaType.parse("image/png"), imageBytes));
 
-                    buildRequestAndSend(url, requestBodyBuilder);
-                }
-        );
+            buildRequestAndSend(url, requestBodyBuilder);
+        });
     }
 
     private void buildRequestAndSend(HttpUrl url, MultipartBody.Builder requestBodyBuilder) {
         RequestBody requestBody = requestBodyBuilder.build();
 
-        Request request = new Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
+        Request request = new Request.Builder().url(url).post(requestBody).build();
 
         sendRequest(request);
     }
 
     private void sendRequest(Request request) {
-        okHttpClient.newCall(request).enqueue(
-                new Callback() {
-                    @Override
-                    public void onFailure(Call call, IOException e) {
-                        log.debug("Error submitting webhook", e);
-                    }
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                log.debug("Error submitting webhook", e);
+            }
 
-                    @Override
-                    public void onResponse(Call call, Response response) throws IOException {
-                        response.close();
-                    }
-                }
-        );
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                response.close();
+            }
+        });
     }
 
     private static byte[] convertImageToByteArray(BufferedImage bufferedImage) throws IOException {
@@ -463,7 +415,6 @@ public class DiscordNotifierPlugin extends Plugin {
         leveledSkills.clear();
         shouldSendLevelMessage = false;
         shouldSendQuestMessage = false;
-        shouldSendClueMessage = false;
         ticksWaited = 0;
     }
 

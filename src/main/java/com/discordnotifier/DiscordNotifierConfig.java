@@ -8,40 +8,40 @@ import net.runelite.client.config.ConfigSection;
 @ConfigGroup("discordnotifier")
 public interface DiscordNotifierConfig extends Config {
 
-    // Levelling config section
+    // Leveling config section
     @ConfigSection(
-            name = "Levelling",
-            description = "The config for levelling notifications",
+            name = "Leveling",
+            description = "The config for leveling notifications",
             position = 1,
             closedByDefault = true
     )
-    String levellingConfig = "levellingConfig";
+    String levelingConfig = "levelingConfig";
 
     @ConfigItem(
-            keyName = "includeLevelling",
-            name = "Send Levelling Notifications",
+            keyName = "includeLeveling",
+            name = "Send Leveling Notifications",
             description = "Send messages when you level up a skill.",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 1
     )
-    default boolean includeLevelling() {
+    default boolean includeLeveling() {
         return false;
     }
 
     @ConfigItem(
-            keyName = "levellingWebhook",
-            name = "Levelling Webhook URL",
-            description = "The Discord Webhook URL(s) to send levelling messages to, separated by a newline.",
-            section = levellingConfig,
+            keyName = "levelingWebhook",
+            name = "Leveling Webhook URL",
+            description = "The Discord Webhook URL(s) to send leveling messages to, separated by a newline.",
+            section = levelingConfig,
             position = 2
     )
-    String levellingWebhook();
+    String levelingWebhook();
 
     @ConfigItem(
             keyName = "minimumLevel",
             name = "Minimum level",
             description = "Levels greater than or equal to this value will send a message.",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 3
     )
     default int minLevel() {
@@ -52,7 +52,7 @@ public interface DiscordNotifierConfig extends Config {
             keyName = "levelInterval",
             name = "Send every X levels",
             description = "Only levels that are a multiple of this value are sent. Level 99 will always be sent regardless of this value.",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 4
     )
     default int levelInterval() {
@@ -63,7 +63,7 @@ public interface DiscordNotifierConfig extends Config {
             keyName = "linearLevelModifier",
             name = "Linear Level Modifier",
             description = "Send every `max(-.1x + linearLevelMax, 1)` levels. Will override `Send every X levels` if set to above zero.",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 5
     )
     default double linearLevelMax() {
@@ -74,7 +74,7 @@ public interface DiscordNotifierConfig extends Config {
             keyName = "levelMessage",
             name = "Level Message",
             description = "Message to send to Discord on Level",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 6
     )
     default String levelMessage() {
@@ -85,7 +85,7 @@ public interface DiscordNotifierConfig extends Config {
             keyName = "andLevelMessage",
             name = "And Level Message",
             description = "Message to send to Discord when Multi Skill Level",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 7
     )
     default String andLevelMessage() {
@@ -96,7 +96,7 @@ public interface DiscordNotifierConfig extends Config {
             keyName = "includeTotalLevelMessage",
             name = "Include total level with message",
             description = "Include total level in the message to send to Discord.",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 8
     )
     default boolean includeTotalLevel() {
@@ -107,7 +107,7 @@ public interface DiscordNotifierConfig extends Config {
             keyName = "totalLevelMessage",
             name = "Total Level Message",
             description = "Message to send to Discord when Total Level is included.",
-            section = levellingConfig,
+            section = levelingConfig,
             position = 9
     )
     default String totalLevelMessage() {
@@ -115,16 +115,16 @@ public interface DiscordNotifierConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "sendLevellingScreenshot",
-            name = "Include levelling screenshots",
-            description = "Include a screenshot when levelling up.",
-            section = levellingConfig,
+            keyName = "sendLevelingScreenshot",
+            name = "Include leveling screenshots",
+            description = "Include a screenshot when leveling up.",
+            section = levelingConfig,
             position = 100
     )
-    default boolean sendLevellingScreenshot() {
+    default boolean sendLevelingScreenshot() {
         return false;
     }
-    // End levelling config section
+    // End leveling config section
 
     // Questing config section
     @ConfigSection(
@@ -168,7 +168,7 @@ public interface DiscordNotifierConfig extends Config {
     @ConfigItem(
             keyName = "sendQuestingScreenshot",
             name = "Include quest screenshots",
-            description = "Include a screenshot with the Discord notification when levelling up.",
+            description = "Include a screenshot with the Discord notification when leveling up.",
             section = questingConfig,
             position = 100
     )
@@ -264,7 +264,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 2
     )
     default String clueMessage() {
-        return "$name has just completed a clue scroll!";
+        return "$name has just completed $tier clue scroll! The treasure was worth $value coins!";
     }
 
     @ConfigItem(
