@@ -23,7 +23,7 @@ dependencies {
 }
 
 group = 'com.discordnotifier'
-version = '1.7.0'
+version = '1.8.0'
 sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {
