@@ -78,7 +78,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 6
     )
     default String levelMessage() {
-        return "$name leveled $skill to $level";
+        return "**$name** leveled $skill to $level";
     }
 
     @ConfigItem(
@@ -111,7 +111,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 9
     )
     default String totalLevelMessage() {
-        return " - Total Level: $total";
+        return " - **Total Level: $total**";
     }
 
     @ConfigItem(
@@ -162,7 +162,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 2
     )
     default String questMessage() {
-        return "$name has just completed: $quest";
+        return "**$name** has just completed: **$quest**";
     }
 
     @ConfigItem(
@@ -213,7 +213,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 2
     )
     default String deathMessage() {
-        return "$name has just died!";
+        return "**$name** has just died!";
     }
 
     @ConfigItem(
@@ -264,7 +264,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 2
     )
     default String clueMessage() {
-        return "$name has just completed $tier clue scroll! The treasure was worth $value coins!";
+        return "**$name** has just completed $tier clue scroll! \nThe treasure was worth **$value coins!**";
     }
 
     @ConfigItem(
@@ -315,7 +315,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 2
     )
     default String petMessage() {
-        return "$name has just received a pet!";
+        return "**$name** has just received a pet!";
     }
 
     @ConfigItem(
@@ -330,9 +330,70 @@ public interface DiscordNotifierConfig extends Config {
     }
 
     @ConfigSection(
+            name = "Valuable Drops",
+            description = "The config for valuable drop notifications",
+            position = 6,
+            closedByDefault = true
+    )
+    String valuableDropConfig = "valuableDropConfig";
+
+    @ConfigItem(
+            keyName = "valuableDropWebhook",
+            name = "Valuable Drop Webhook URL",
+            description = "The Discord Webhook URL(s) to send valuable drop messages to, separated by a newline.",
+            section = valuableDropConfig,
+            position = 1
+    )
+    String valuableDropWebhook();
+
+    @ConfigItem(
+            keyName = "includeValuableDrop",
+            name = "Valuable Drop Notifications",
+            description = "Message to send to Discord on valuable drops",
+            section = valuableDropConfig,
+            position = 2
+    )
+    default boolean includeValuableDrop() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "valuableDropThreshold",
+            name = "Valuable Drop Threshold",
+            description = "The minimum value of the drop for it to send a Discord notification",
+            section = valuableDropConfig,
+            position = 3
+    )
+    default int valuableDropThreshold() {
+        return 0;
+    }
+
+    @ConfigItem(
+            keyName = "valuableDropMessage",
+            name = "Valuable Drop Message",
+            description = "Message to send to Discord when you receive a valuable drop",
+            section = valuableDropConfig,
+            position = 4
+    )
+    default String valuableDropMessage() {
+        return "**$name** just received a valuable drop: **$itemName!** \nApprox Value: **$itemValue coins**";
+    }
+
+    @ConfigItem(
+            keyName = "sendValuableDropScreenshot",
+            name = "Include valuable drop screenshots",
+            description = "Include a screenshot with the Discord notification when you get a valuable drop",
+            section = valuableDropConfig,
+            position = 5
+    )
+    default boolean sendValuableDropScreenshot() {
+        return false;
+    }
+
+    @ConfigSection(
             name = "Collection logs",
             description = "The config for collection logs",
-            position = 6,
+            position = 7,
             closedByDefault = true
     )
     String collectionLogsConfig = "collectionLogsConfig";
@@ -365,7 +426,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 3
     )
     default String collectionLogMessage() {
-        return "$name has just completed a collection log: $entry";
+        return "**$name** has just completed a collection log: **$entry**";
     }
 
     @ConfigItem(
@@ -382,7 +443,7 @@ public interface DiscordNotifierConfig extends Config {
     @ConfigSection(
             name = "Combat Achievements",
             description = "The config for combat achievements",
-            position = 6,
+            position = 8,
             closedByDefault = true
     )
     String combatAchievementsConfig = "combatAchievementsConfig";
@@ -415,7 +476,7 @@ public interface DiscordNotifierConfig extends Config {
             position = 3
     )
     default String combatAchievementsMessage() {
-        return "$name has just completed $tier combat achievement: $achievement";
+        return "**$name** has just completed $tier combat achievement: **$achievement**";
     }
 
     @ConfigItem(

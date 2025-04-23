@@ -20,6 +20,7 @@ import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,6 +51,7 @@ public class DiscordNotifierPlugin extends Plugin {
     private static final Pattern WELL_DONE_REGEX = Pattern.compile("Well done, you've completed the Treasure Trail!", Pattern.CASE_INSENSITIVE);
     private static final Pattern CLUE_SCROLL_REGEX = Pattern.compile("You have completed (\\d+) (Beginner|Easy|Medium|Hard|Elite|Master) Treasure Trails\\.", Pattern.CASE_INSENSITIVE);
     private static final Pattern TREASURE_VALUE_REGEX = Pattern.compile("Your treasure is worth around (.*?) coins!", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALUABLE_DROP_REGEX = Pattern.compile(".*Valuable drop: ([^<>]+?\\(((?:\\d+,?)+) coins\\))(?:</col>)?");
 
     private static final ImmutableList<String> PET_MESSAGES = ImmutableList.of("You have a funny feeling like you're being followed", "You feel something weird sneaking into your backpack", "You have a funny feeling like you would have been followed");
 
@@ -186,6 +188,19 @@ public class DiscordNotifierPlugin extends Plugin {
         if (config.includePets() && PET_MESSAGES.stream().anyMatch(chatMessage::contains)) {
             sendPetMessage();
         }
+
+        if (config.includeValuableDrop()) {
+            Matcher valuableMatcher = VALUABLE_DROP_REGEX.matcher(chatMessage);
+            if (valuableMatcher.find()) {
+                int valuableDropValue = Integer.parseInt(valuableMatcher.group(2).replaceAll(",", ""));
+                if (valuableDropValue >= config.valuableDropThreshold()) {
+                    String[] valuableDrop = valuableMatcher.group(1).split(" \\(");
+                    String valuableDropName = (String) Array.get(valuableDrop, 0);
+                    String valuableDropValueString = valuableMatcher.group(2);
+                    sendValuableDropMessage(valuableDropName, valuableDropValueString);
+                }
+            }
+        }
     }
 
     @Subscribe
@@ -276,6 +291,19 @@ public class DiscordNotifierPlugin extends Plugin {
         DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
         discordWebhookBody.setContent(combatAchievementMessageString);
         sendWebhook(discordWebhookBody, config.sendCombatAchievementsScreenshot(), config.combatAchievementsWebhook());
+    }
+
+    private void sendValuableDropMessage(String itemName, String itemValue) {
+        String localName = client.getLocalPlayer().getName();
+
+        String valuableDropMessageString = config.valuableDropMessage()
+                .replaceAll("\\$name", localName)
+                .replaceAll("\\$itemName", itemName)
+                .replaceAll("\\$itemValue", itemValue);
+
+        DiscordWebhookBody discordWebhookBody = new DiscordWebhookBody();
+        discordWebhookBody.setContent(valuableDropMessageString);
+        sendWebhook(discordWebhookBody, config.sendValuableDropScreenshot(), config.valuableDropWebhook());
     }
 
     private void sendCollectionLogMessage(String entry) {
